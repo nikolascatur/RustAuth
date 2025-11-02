@@ -1,8 +1,10 @@
 use std::io::{self, Write};
 
+use tokio::signal::{self, unix::Signal};
+
 use crate::{
     config::{init_db_pool, postgress_setup},
-    service::user_service::UserService,
+    service::user_service::{self, UserService},
 };
 
 struct Menu {
@@ -14,13 +16,14 @@ struct Menu {
 enum MenuMode {
     Main,
     Login,
-    CheckNo,
+    InputPassword,
     Create,
 }
 
 impl Menu {
     pub async fn new() -> Self {
         let db = postgress_setup().await.unwrap();
+        // .unwrap_or_else(|err| println!("{}", err.to_string()));
         Self {
             mode_menu: MenuMode::Main,
             sub_menu: None,
@@ -35,9 +38,10 @@ impl Menu {
     }
     pub async fn show_menu(&mut self) {
         match self.mode_menu {
-            MenuMode::Main => self.main_menu(),
-            MenuMode::Login => self.login_menu(),
-            MenuMode::Create => self.create_menu(),
+            MenuMode::Main => self.main_menu().await,
+            MenuMode::Login => self.login_menu().await,
+            MenuMode::Create => self.create_menu().await,
+            MenuMode::InputPassword => self.input_password(),
             _ => {}
         }
     }
@@ -47,7 +51,7 @@ impl Menu {
         number
     }
 
-    fn main_menu(&mut self) {
+    async fn main_menu(&mut self) {
         self.clear_terminal();
         println!("1. Login");
         println!("2. Exit");
@@ -60,17 +64,36 @@ impl Menu {
         self.go_next_main(&number);
     }
 
-    fn login_menu(&self) {
+    async fn login_menu(&mut self) {
         self.clear_terminal();
         println!("Masukkan Alamat Email Anda");
         let mut email = String::new();
         io::stdin()
             .read_line(&mut email)
             .expect("Failed Read email");
+        let is_user_exist = self.user_service.is_user_exist(email).await;
+        match is_user_exist {
+            Ok(n) => {
+                if n {
+                    self.mode_menu = MenuMode::InputPassword
+                } else {
+                    self.mode_menu = MenuMode::Create
+                }
+            }
+            Err(err) => {
+                println!("Error {}", err);
+            }
+        }
     }
 
-    fn create_menu(&self) {
+    fn input_password(&self) {
         self.clear_terminal();
+        println!("Masukkan Password Anda");
+    }
+
+    async fn create_menu(&mut self) {
+        self.clear_terminal();
+        println!("Buat Nama User")
     }
 
     fn go_next_main(&mut self, menu: &i32) {
@@ -89,5 +112,8 @@ impl Menu {
 
 pub async fn run_cli() {
     let mut menu = Menu::new().await;
-    menu.show_menu();
+    loop {
+        menu.show_menu().await;
+    }
+    // signal::ctrl_c().await.unwrap();
 }

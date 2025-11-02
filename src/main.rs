@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use crate::{cli_config::run_cli, config::init_db_pool};
+use dotenv::dotenv;
 
 mod cli_config;
 mod config;
@@ -15,5 +16,6 @@ async fn main() {
     //     std::env::var("DATABASE_URL").unwrap_or_else(|_| "sqlite:./db.sqlite".to_string());
     // let pool = init_db_pool(&load_database_url);
     // let shared_pool = Arc::new(pool);
-    run_cli();
+    dotenv().ok();
+    run_cli().await;
 }

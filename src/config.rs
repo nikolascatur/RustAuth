@@ -18,6 +18,7 @@ pub async fn init_db_pool(database_url: &str) -> anyhow::Result<PgPool> {
 pub async fn postgress_setup() -> anyhow::Result<PgPool> {
     let load_database_url =
         std::env::var("DATABASE_URL").unwrap_or_else(|_| "sqlite:./db.sqlite".to_string());
+    println!("nikoo {}", load_database_url);
     return init_db_pool(&load_database_url).await;
 }
 
