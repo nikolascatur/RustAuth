@@ -1,8 +1,11 @@
+use crate::model::session::{CreateSession, UserSession};
 use crate::model::users::{CountUser, CreateUser, LoginUser, User};
 use crate::util::security::{hash_password, verify_passwrod};
-use anyhow::{Error, Ok, Result, anyhow};
+use anyhow::{Ok, Result, anyhow};
 use secrecy::SecretString;
 use sqlx::PgPool;
+use sqlx::types::{chrono, uuid};
+use uuid::Uuid;
 
 pub struct UserRepo {
     db: PgPool,
@@ -13,7 +16,7 @@ impl UserRepo {
         Self { db: db.clone() }
     }
 
-    pub async fn create_user(&self, create: CreateUser) -> Result<User, anyhow::Error> {
+    pub async fn create_user(&self, create: CreateUser) -> Result<UserSession, anyhow::Error> {
         let password = SecretString::new(create.password);
         let password_hash = hash_password(&password).unwrap_or_else(|e| "".to_string()); //.map_err(|e| e.to_string());
         let user = sqlx::query_as!(
@@ -21,23 +24,26 @@ impl UserRepo {
             r#"
         INSERT INTO users (name, email, password)
         VALUES ($1, $2, $3)
-        RETURNING id, name, email
+        RETURNING id, name, email, password
         "#,
             create.name,
             create.email,
             password_hash
         )
         .fetch_one(&self.db)
-        .await
-        .map_err(|err| anyhow!("{}", err));
-        return user;
+        .await?;
+        let session = self
+            .create_session(CreateSession { user_id: user.id })
+            .await
+            .map_err(|err| anyhow!("Session create failed{}", err));
+        session
     }
 
-    pub async fn check_user(&self, email: String) -> Result<bool, anyhow::Error> {
+    pub async fn check_user(&self, email: &String) -> Result<bool, anyhow::Error> {
         let count_user = sqlx::query_as!(
             CountUser,
             "SELECT COUNT(email) as count FROM users WHERE email LIKE $1",
-            &email
+            email
         )
         .fetch_one(&self.db)
         .await?;
@@ -45,23 +51,46 @@ impl UserRepo {
         return Ok(count_user.count.unwrap() > 0);
     }
 
-    pub async fn login(&self, login: LoginUser) {
-        let password = SecretString::new(login.password);
+    pub async fn login(&self, login: &LoginUser) -> Result<UserSession, anyhow::Error> {
+        let password = SecretString::new(login.password.clone());
         let user = sqlx::query_as!(
-            LoginUser,
-            "SELECT email, password FROM users WHERE email LIKE $1",
+            User,
+            "SELECT id, name, email, password FROM users WHERE email LIKE $1",
             login.email
         )
         .fetch_one(&self.db)
-        .await
-        .expect("");
+        .await?;
 
-        let result = verify_passwrod(&password, &user.password);
-        // .unwrap_or_else(|e| e.to_string());
-        // match User {
-        //     Ok => verify_passwrod(&password, usr);
-        //     _ => {}
+        let is_valid = verify_passwrod(&password, &user.password)
+            .map_err(|err| anyhow!("Password invalid {}", err))?;
+        if is_valid == true {
+            let session = self
+                .create_session(CreateSession { user_id: user.id })
+                .await
+                .map_err(|err| anyhow!(err));
+            session
+        } else {
+            Err(anyhow!("Wrong password"))
+        }
+    }
 
-        // }
+    pub async fn create_session(
+        &self,
+        session: CreateSession,
+    ) -> Result<UserSession, anyhow::Error> {
+        let token = Uuid::new_v4();
+        let refresh_token = Uuid::new_v4();
+        let age = chrono::Utc::now().timestamp() + 108000;
+        let session = sqlx::query_as!(
+            UserSession,
+            r#"INSERT INTO user_sessions(user_id, session_token, refresh_token, timeout) VALUES ($1, $2, $3, $4) 
+            RETURNING id, user_id,session_token,refresh_token,timeout"#,
+            session.user_id,
+            token.to_string(),
+            refresh_token.to_string(),
+            age
+        ).fetch_one(&self.db).await?;
+
+        Ok(session)
     }
 }

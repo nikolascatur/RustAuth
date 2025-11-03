@@ -4,6 +4,7 @@ use tokio::signal::{self, unix::Signal};
 
 use crate::{
     config::{init_db_pool, postgress_setup},
+    model::users::CreateUser,
     service::user_service::{self, UserService},
 };
 
@@ -67,17 +68,33 @@ impl Menu {
     async fn login_menu(&mut self) {
         self.clear_terminal();
         println!("Masukkan Alamat Email Anda");
+        let mut password = String::new();
         let mut email = String::new();
+        let mut name = String::new();
         io::stdin()
             .read_line(&mut email)
             .expect("Failed Read email");
-        let is_user_exist = self.user_service.is_user_exist(email).await;
+        let is_user_exist = self.user_service.is_user_exist(&email).await;
         match is_user_exist {
             Ok(n) => {
                 if n {
-                    self.mode_menu = MenuMode::InputPassword
+                    println!("Masukkan Password Anda");
+                    io::stdin()
+                        .read_line(&mut password)
+                        .expect("Failed Read Password");
                 } else {
-                    self.mode_menu = MenuMode::Create
+                    println!("Masukkaan Nama Anda");
+                    io::stdin().read_line(&mut name).expect("faield read name");
+                    println!("Masukkan Password Anda");
+                    io::stdin()
+                        .read_line(&mut password)
+                        .expect("Failed Read Password");
+                    let user = CreateUser {
+                        email: email,
+                        name: name,
+                        password: password,
+                    };
+                    let result_create = self.user_service.create_user(user).await;
                 }
             }
             Err(err) => {
@@ -92,8 +109,12 @@ impl Menu {
     }
 
     async fn create_menu(&mut self) {
-        self.clear_terminal();
-        println!("Buat Nama User")
+        let mut user = self.clear_terminal();
+        println!("Buat Nama User");
+        let mut buffer = String::new();
+        io::stdin()
+            .read_line(&mut buffer)
+            .expect("Input User error");
     }
 
     fn go_next_main(&mut self, menu: &i32) {

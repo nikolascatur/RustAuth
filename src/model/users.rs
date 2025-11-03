@@ -1,11 +1,13 @@
 use serde::{Deserialize, Serialize};
+use uuid::Uuid;
 use validator::Validate;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct User {
-    pub id: String,
+    pub id: Uuid,
     pub name: String,
     pub email: String,
+    pub password: String,
 }
 
 #[derive(Deserialize, Validate)]
@@ -25,9 +27,11 @@ pub struct UpdateUser {
     password: Option<String>,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Validate)]
 pub struct LoginUser {
+    #[validate(email(message = "Invalid Email Format"))]
     pub email: String,
+    #[validate(length(min = 8, message = "Password Anda terlalu pendek"))]
     pub password: String,
 }
 
