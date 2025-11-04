@@ -1,24 +1,21 @@
 use std::io::{self, Write};
 
-use tokio::signal::{self, unix::Signal};
-
 use crate::{
-    config::{init_db_pool, postgress_setup},
-    model::users::CreateUser,
-    service::user_service::{self, UserService},
+    config::postgress_setup,
+    model::users::{CreateUser, LoginUser},
+    service::user_service::UserService,
 };
 
 struct Menu {
     mode_menu: MenuMode,
-    sub_menu: Option<i32>,
     user_service: UserService,
 }
 
 enum MenuMode {
     Main,
     Login,
-    InputPassword,
-    Create,
+    Home,
+    Exit,
 }
 
 impl Menu {
@@ -27,7 +24,6 @@ impl Menu {
         // .unwrap_or_else(|err| println!("{}", err.to_string()));
         Self {
             mode_menu: MenuMode::Main,
-            sub_menu: None,
             user_service: UserService::new(&db),
         }
     }
@@ -41,8 +37,8 @@ impl Menu {
         match self.mode_menu {
             MenuMode::Main => self.main_menu().await,
             MenuMode::Login => self.login_menu().await,
-            MenuMode::Create => self.create_menu().await,
-            MenuMode::InputPassword => self.input_password(),
+            MenuMode::Home => self.home_screen().await,
+            MenuMode::Exit => self.exit_screen().await,
             _ => {}
         }
     }
@@ -65,6 +61,26 @@ impl Menu {
         self.go_next_main(&number);
     }
 
+    async fn home_screen(&mut self) {
+        self.clear_terminal();
+        println!("Selamat Datang Di Home");
+        let mut select_menu = String::new();
+        println!("Pilih Menu Anda ");
+        io::stdin()
+            .read_line(&mut select_menu)
+            .expect("Failed read menu");
+    }
+
+    async fn exit_screen(&mut self) {
+        self.clear_terminal();
+        println!("Unauthorized user");
+        let mut select_menu = String::new();
+        println!("Pilih Menu Anda ");
+        io::stdin()
+            .read_line(&mut select_menu)
+            .expect("Failed read menu");
+    }
+
     async fn login_menu(&mut self) {
         self.clear_terminal();
         println!("Masukkan Alamat Email Anda");
@@ -82,6 +98,15 @@ impl Menu {
                     io::stdin()
                         .read_line(&mut password)
                         .expect("Failed Read Password");
+                    let login_user = LoginUser {
+                        email: email,
+                        password: password,
+                    };
+                    let login_result = self.user_service.login(&login_user).await;
+                    match login_result {
+                        Ok(_) => self.mode_menu = MenuMode::Home,
+                        Err(_) => self.mode_menu = MenuMode::Exit,
+                    }
                 } else {
                     println!("Masukkaan Nama Anda");
                     io::stdin().read_line(&mut name).expect("faield read name");
@@ -95,26 +120,16 @@ impl Menu {
                         password: password,
                     };
                     let result_create = self.user_service.create_user(user).await;
+                    match result_create {
+                        Ok(_) => self.mode_menu = MenuMode::Home,
+                        Err(_) => self.mode_menu = MenuMode::Exit,
+                    }
                 }
             }
             Err(err) => {
                 println!("Error {}", err);
             }
         }
-    }
-
-    fn input_password(&self) {
-        self.clear_terminal();
-        println!("Masukkan Password Anda");
-    }
-
-    async fn create_menu(&mut self) {
-        let mut user = self.clear_terminal();
-        println!("Buat Nama User");
-        let mut buffer = String::new();
-        io::stdin()
-            .read_line(&mut buffer)
-            .expect("Input User error");
     }
 
     fn go_next_main(&mut self, menu: &i32) {
