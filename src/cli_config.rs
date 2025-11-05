@@ -2,13 +2,17 @@ use std::io::{self, Write};
 
 use crate::{
     config::postgress_setup,
-    model::users::{CreateUser, LoginUser},
+    model::{
+        session::UserSession,
+        users::{CreateUser, LoginUser, Logout},
+    },
     service::user_service::UserService,
 };
 
 struct Menu {
     mode_menu: MenuMode,
     user_service: UserService,
+    user_session: Option<UserSession>,
 }
 
 enum MenuMode {
@@ -25,6 +29,7 @@ impl Menu {
         Self {
             mode_menu: MenuMode::Main,
             user_service: UserService::new(&db),
+            user_session: None,
         }
     }
 
@@ -64,11 +69,37 @@ impl Menu {
     async fn home_screen(&mut self) {
         self.clear_terminal();
         println!("Selamat Datang Di Home");
+        println!("1. Info User");
+        println!("2. Logout");
         let mut select_menu = String::new();
         println!("Pilih Menu Anda ");
         io::stdin()
             .read_line(&mut select_menu)
             .expect("Failed read menu");
+        let select_menu = select_menu.trim();
+        match select_menu {
+            "1" => {}
+            "2" => {
+                println!("session --> {:?}", &self.user_session);
+                if let Some(ses) = &self.user_session {
+                    println!("sessionvaluee - {}", ses.session_token);
+                    let logout = Logout {
+                        session_id: ses.session_token.clone(),
+                    };
+                    let result = self
+                        .user_service
+                        .logout(&logout)
+                        .await
+                        .unwrap_or_else(|_| false);
+                    if result {
+                        self.mode_menu = MenuMode::Main;
+                    } else {
+                        println!("Failed to logout");
+                    }
+                }
+            }
+            _ => {}
+        }
     }
 
     async fn exit_screen(&mut self) {
@@ -104,7 +135,10 @@ impl Menu {
                     };
                     let login_result = self.user_service.login(&login_user).await;
                     match login_result {
-                        Ok(_) => self.mode_menu = MenuMode::Home,
+                        Ok(ses) => {
+                            self.mode_menu = MenuMode::Home;
+                            self.user_session = Some(ses);
+                        }
                         Err(_) => self.mode_menu = MenuMode::Exit,
                     }
                 } else {
@@ -121,7 +155,10 @@ impl Menu {
                     };
                     let result_create = self.user_service.create_user(user).await;
                     match result_create {
-                        Ok(_) => self.mode_menu = MenuMode::Home,
+                        Ok(session) => {
+                            self.user_session = Some(session);
+                            self.mode_menu = MenuMode::Home
+                        }
                         Err(_) => self.mode_menu = MenuMode::Exit,
                     }
                 }

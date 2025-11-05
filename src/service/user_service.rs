@@ -4,12 +4,13 @@ use sqlx::PgPool;
 use crate::{
     model::{
         session::UserSession,
-        users::{CreateUser, LoginUser},
+        users::{CreateUser, LoginUser, Logout},
     },
     repository::user_repo::UserRepo,
     util::validation::is_valid_email,
 };
 
+#[derive(Debug)]
 pub struct UserService {
     user_repo: UserRepo,
 }
@@ -37,5 +38,10 @@ impl UserService {
     pub async fn login(&self, login: &LoginUser) -> Result<UserSession, anyhow::Error> {
         let user_session = self.user_repo.login(login).await;
         user_session
+    }
+
+    pub async fn logout(&self, logout: &Logout) -> Result<bool, anyhow::Error> {
+        let logout = self.user_repo.delete_session(logout).await;
+        logout
     }
 }

@@ -1,5 +1,5 @@
 use crate::model::session::{CreateSession, UserSession};
-use crate::model::users::{CountUser, CreateUser, LoginUser, User};
+use crate::model::users::{CountUser, CreateUser, InfoUser, LoginUser, Logout, Session, User};
 use crate::util::security::{hash_password, verify_passwrod};
 use anyhow::{Ok, Result, anyhow};
 use secrecy::SecretString;
@@ -7,6 +7,7 @@ use sqlx::PgPool;
 use sqlx::types::{chrono, uuid};
 use uuid::Uuid;
 
+#[derive(Debug)]
 pub struct UserRepo {
     db: PgPool,
 }
@@ -74,6 +75,17 @@ impl UserRepo {
         }
     }
 
+    pub async fn delete_session(&self, logout: &Logout) -> Result<bool, anyhow::Error> {
+        let del = sqlx::query!(
+            "DELETE FROM user_sessions WHERE session_token = $1",
+            &logout.session_id
+        )
+        .execute(&self.db)
+        .await?
+        .rows_affected();
+        Ok(del > 0)
+    }
+
     pub async fn create_session(
         &self,
         session: CreateSession,
@@ -92,5 +104,29 @@ impl UserRepo {
         ).fetch_one(&self.db).await?;
 
         Ok(session)
+    }
+
+    pub async fn is_session_active(&self, session_id: &String) -> Result<bool, anyhow::Error> {
+        let session = sqlx::query_as!(
+            Session,
+            "SELECT timeout FROM user_sessions WHERE session_token = $1",
+            session_id
+        )
+        .fetch_one(&self.db)
+        .await?;
+        let check_active = &session.timeout - &chrono::Utc::now().timestamp();
+        Ok(check_active > 0)
+    }
+
+    pub async fn info_user(&self, id: Uuid) -> Result<InfoUser, anyhow::Error> {
+        let user = sqlx::query_as!(
+            InfoUser,
+            "SELECT id, name, email FROM users WHERE id = $1",
+            id
+        )
+        .fetch_one(&self.db)
+        .await?;
+
+        Ok(user)
     }
 }

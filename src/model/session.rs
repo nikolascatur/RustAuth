@@ -1,5 +1,6 @@
 use uuid::Uuid;
 
+#[derive(Debug)]
 pub struct UserSession {
     pub id: Uuid,
     pub user_id: Uuid,

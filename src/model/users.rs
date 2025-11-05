@@ -10,6 +10,13 @@ pub struct User {
     pub password: String,
 }
 
+#[derive(Serialize, Deserialize)]
+pub struct InfoUser {
+    pub id: Uuid,
+    pub name: String,
+    pub email: String,
+}
+
 #[derive(Deserialize, Validate)]
 pub struct CreateUser {
     #[validate(length(min = 3, message = "Username minimal harus 3 huruf"))]
@@ -38,4 +45,14 @@ pub struct LoginUser {
 #[derive(Deserialize)]
 pub struct CountUser {
     pub count: Option<i64>,
+}
+
+#[derive(Deserialize)]
+pub struct Logout {
+    pub session_id: String,
+}
+
+#[derive(Deserialize)]
+pub struct Session {
+    pub timeout: i64,
 }
