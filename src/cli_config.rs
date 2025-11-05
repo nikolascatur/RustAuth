@@ -93,6 +93,7 @@ impl Menu {
                         .unwrap_or_else(|_| false);
                     if result {
                         self.mode_menu = MenuMode::Main;
+                        self.user_session = None;
                     } else {
                         println!("Failed to logout");
                     }
