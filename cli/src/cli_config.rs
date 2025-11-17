@@ -1,6 +1,6 @@
 use std::io::{self, Write};
 
-use crate::{
+use auth_core::{
     config::postgress_setup,
     model::{
         session::UserSession,

@@ -1,0 +1,10 @@
+[package]
+name = "cli"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+auth_core = { path = "../auth_core" }
+serde = { workspace = true }
+tokio = { workspace = true }
+dotenv = { workspace = true }

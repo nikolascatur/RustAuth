@@ -83,6 +83,32 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1505bd5d3d116872e7271a6d4e16d81d0c8570876c8de68093a09ac269d8aac0"
 
 [[package]]
+name = "auth_core"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "argon2",
+ "axum",
+ "dotenv",
+ "lazy_static",
+ "password-hash",
+ "rand",
+ "regex",
+ "reqwest",
+ "secrecy",
+ "serde",
+ "serde_json",
+ "sqlx",
+ "thiserror",
+ "tokio",
+ "tracing",
+ "tracing-subscriber",
+ "uuid",
+ "validator",
+ "zeroize",
+]
+
+[[package]]
 name = "autocfg"
 version = "1.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -231,6 +257,16 @@ dependencies = [
  "iana-time-zone",
  "num-traits",
  "windows-link",
+]
+
+[[package]]
+name = "cli"
+version = "0.1.0"
+dependencies = [
+ "auth_core",
+ "dotenv",
+ "serde",
+ "tokio",
 ]
 
 [[package]]
@@ -1538,32 +1574,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "rust-auth"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "argon2",
- "axum",
- "dotenv",
- "lazy_static",
- "password-hash",
- "rand",
- "regex",
- "reqwest",
- "secrecy",
- "serde",
- "serde_json",
- "sqlx",
- "thiserror",
- "tokio",
- "tracing",
- "tracing-subscriber",
- "uuid",
- "validator",
- "zeroize",
-]
-
-[[package]]
 name = "rustix"
 version = "1.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1708,6 +1718,15 @@ dependencies = [
  "itoa",
  "ryu",
  "serde",
+]
+
+[[package]]
+name = "server"
+version = "0.1.0"
+dependencies = [
+ "auth_core",
+ "serde",
+ "tokio",
 ]
 
 [[package]]
